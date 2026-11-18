@@ -32,9 +32,8 @@ def init_db():
                 description TEXT ,
                 price REAL NOT NULL,
                 owner_id INTEGER NOT NULL,
-                status TEXT NOT NULL DEFAULT "on_sale",
-                created_at TEXT NOT NULL,
-                FOREIGN KEY (owner_id)REFERENCES users(id)
+                status TEXT NOT NULL DEFAULT 'on_sale',
+                FOREIGN KEY (owner_id) REFERENCES users(id)
             )
         """)
 

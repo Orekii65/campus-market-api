@@ -31,7 +31,7 @@ def init_db():
                 title TEXT NOT NULL ,
                 description TEXT ,
                 price REAL NOT NULL,
-                owner_id INGEGER NOT NULL,
+                owner_id INTEGER NOT NULL,
                 status TEXT NOT NULL DEFAULT "on_sale",
                 created_at TEXT NOT NULL,
                 FOREIGN KEY (owner_id)REFERENCES users(id)

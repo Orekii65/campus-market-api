@@ -1,5 +1,6 @@
 import sqlite3
 import hashlib
+import secrets
 from fastapi import FastAPI,HTTPException
 from datetime import datetime,timezone
 from pydantic import BaseModel,Field
@@ -10,6 +11,9 @@ app = FastAPI(title="校园二手交易平台 API")
 class UserCreate(BaseModel):
     username:str =Field(min_length=3,max_length=30)
     password:str=Field(min_length=6,max_length=50)
+class UserLogin(BaseModel):
+    username:str
+    password:str
 
 def hash_password(password:str) -> str:
     return hashlib.sha256(password.encode("utf-8")).hexdigest()
@@ -56,6 +60,16 @@ def init_db():
     )
     """)
 
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS tokens(
+            token TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+
+    """)
     conn.commit()
     conn.close()
 
@@ -105,5 +119,51 @@ def register(user:UserCreate):
         "data":{
             "id":user_id,
             "username":user.username
+        }
+    }
+@app.post("/login")
+def login(user: UserLogin):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT * FROM users WHERE username = ?",
+        (user.username,)
+    )
+    db_user = cursor.fetchone()
+
+    if db_user is None:
+        conn.close()
+        raise HTTPException(
+            status_code=401,
+            detail="用户名或密码错误"
+        )
+
+    password_hash = hash_password(user.password)
+
+    if db_user["password_hash"] != password_hash:
+        conn.close()
+        raise HTTPException(
+            status_code=401,
+            detail="用户名或密码错误"
+        )
+
+    token = secrets.token_hex(32)
+    created_at = datetime.now(timezone.utc).isoformat()
+
+    cursor.execute(
+        "INSERT INTO tokens (token, user_id, created_at) VALUES (?, ?, ?)",
+        (token, db_user["id"], created_at)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "code": 0,
+        "message": "登录成功",
+        "data": {
+            "token": token,
+            "username": db_user["username"]
         }
     }
